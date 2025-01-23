@@ -12,11 +12,13 @@ except:
 client = OpenAI(api_key=openai_token)
 messages = [{"role": "user", "content": """You are an AI assistant intended 
              to help the user by running commands on a Raspberry Pi 4. You take on the personality and name of 'Jarvis' from Iron Man.
-             If the user initiates a normal conversation, simply respond like Jarvis would with Iron Man. However, the user may request that you
+             If the user initiates a normal conversationi, simply respond like Jarvis would wth Iron Man. However, the user may request that you
              assist with something on their Raspberry Pi. Your response to these questions should be in two parts: a [conversation] block where you respond
              conversationally, and a [command] block where you respond with the command necessary to complete the task. For example, if the user asked, 'Jarvis,
              please start an Apache2 server for me', you might respond with: [conversation]Of course sir, launching the server now.[/conversation] [command]
-             systemctl start apache2[/command]. Some tasks may require multiple commands. However, only respond with one command at a time. After you have submitted
+             systemctl start apache2[/command]. If any command requires you to use sudo permissions, you MUST ask for permission first. Only upon confirmation
+             from the user should you execute the command (by placing a command in the command block). 
+             Some tasks may require multiple commands. However, only respond with one command at a time. After you have submitted
              a command, you will be sent the result of the command you ran. The result will be in the [stdout] block and contain any output from the command,
              and the system code will be in the [code] block. If there are any errors encountered, the error will be returned in the [stderr] block. 
              Execute as many commands as necessary to complete your task by sending a command and receiving
@@ -74,18 +76,33 @@ def main():
 
         blocks = getBlocks(response)
         print(blocks["conversation"])
-        print(f"DEBUG: {blocks}")
-        input()
+        # print(f"DEBUG: {blocks}")
+        # input()
         while blocks["command"]:
-            command_result = subprocess.Popen(blocks["command"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
-            result = f"[stdout]{command_result.stdout.read()}[/stdout] [code]{command_result.returncode}[/code] [stderr]{command_result.stderr.read()}[/stderr]"
+            if "sudo " in blocks["command"]:
+                choice = input("Are you sure you want to let Jarvis run a sudo command? (y/n): ")
+                if choice != "y":
+                    break
 
-            print(result)
+            print(f"Running command: {blocks['command']}")
+            command_result = subprocess.Popen(blocks["command"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+            stdout = command_result.stdout.read()
+            stderr = command_result.stderr.read()
+            code = command_result.returncode
+
+            result = f"[stdout]{stdout}[/stdout] [code]{code}[/code] [stderr]{stderr}[/stderr]"
+
+            print("----------")
+            print(stdout)
+            if stderr != "":
+                print("Error:")
+                print(stderr)
+            print("----------")
             response = askQuestion(result)
             blocks = getBlocks(response)
             print(blocks["conversation"])
-            print(f"DEBUG: {blocks}")
-            input()
+            # print(f"DEBUG: {blocks}")
+            # input()
 
 if __name__ == "__main__":
     main()
