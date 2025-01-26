@@ -138,8 +138,6 @@ def main():
             response = askQuestion(result)
             blocks = getBlocks(response)
             print(f"\n{jarvis_tag} {blocks['conversation']}")
-            # print(f"DEBUG: {blocks}")
-            # input()
 
 if __name__ == "__main__":
     main()
