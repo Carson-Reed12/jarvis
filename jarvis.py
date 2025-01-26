@@ -30,7 +30,8 @@ def initializeClient():
                 systemctl start apache2[/command].
                 Some tasks may require multiple commands. However, only respond with one command at a time. After you have submitted
                 a command, you will be sent the result of the command you ran. The result will be in the [stdout] block and contain any output from the command,
-                and the system code will be in the [code] block. If there are any errors encountered, the error will be returned in the [stderr] block. 
+                and the system code will be in the [code] block. If there are any errors encountered, the error will be returned in the [stderr] block. When receiving these
+                result blocks, your conversation blocks should briefly explain the results and what you plan to do next. 
                 Execute as many commands as necessary to complete your task by sending a command and receiving
                 a result until you deem the task has been completed based on the results. You may execute any confirmation commands you feel necessary
                 as well. For example, if you wanted to be thorough to verify that 'test.txt' was created in /tmp, you can continue processing and run an 'ls /tmp' command
@@ -88,7 +89,17 @@ def getBlocks(response):
     if command[-1:] == "\n":
         command = command[:-1]
 
-    return {"conversation": conversation, "command": command.replace("\n", "")}
+    if command.startswith('echo -e'):
+        command = command.replace('echo -e', 'echo')
+
+    return {"conversation": conversation, "command": command}
+
+def displayCommandResults(stdout, stderr, code):
+    print(f"[u]Status Code: [purple]{code}[/purple][/u]")
+    if stderr:
+        console.log(stderr.strip())
+    elif stdout:
+        print(f"[yellow3]{stdout.strip()}[/yellow3]")
 
 def main():
     introAnimation()
@@ -100,12 +111,12 @@ def main():
 
     introduction = getIntroduction()
     blocks = getBlocks(introduction)
-    print(f"{jarvis_tag} {blocks['conversation']}")
+    print(f"{jarvis_tag} {blocks['conversation']}") # change to allow Markdown from jarvis?
 
     while True:
         print(f"\n{user_tag}", end="")
         request = input()
-        if request == "done":
+        if request == "done" or request == "quit" or request == "exit":
             break
 
         response = askQuestion(request)
@@ -121,23 +132,22 @@ def main():
                     break
 
             with console.status("[bold blue]Executing command...", spinner="boxBounce") as status:
-                command_result = subprocess.Popen(blocks["command"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True) # what happens if user needs to type something in?
+                command_result = subprocess.Popen(blocks["command"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True) # what happens if user needs to type something in? still type stuff in but looks weird with the spinner
+                command_result.wait()
                 stdout = command_result.stdout.read()
                 stderr = command_result.stderr.read()
                 code = command_result.returncode
             result = f"[stdout]{stdout}[/stdout] [code]{code}[/code] [stderr]{stderr}[/stderr]"
 
-            print("----------")
-            if stdout != "":
-                print(stdout.strip())
-            if stderr != "":
-                print("Error:")
-                print(stderr.strip())
-            print("----------")
+            displayCommandResults(stdout, stderr, code)
 
             response = askQuestion(result)
             blocks = getBlocks(response)
-            print(f"\n{jarvis_tag} {blocks['conversation']}")
+            print(f"\n{jarvis_tag} {blocks['conversation']}") # change to allow Markdown from jarvis?
 
 if __name__ == "__main__":
     main()
+    # for animations/styles:
+    # https://github.com/Textualize/rich
+    # https://github.com/sepandhaghighi/art
+    # https://github.com/Textualize/textual
