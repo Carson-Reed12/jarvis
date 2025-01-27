@@ -2,16 +2,30 @@ from openai import OpenAI
 from rich import print
 from rich.console import Console
 from rich.syntax import Syntax
+from rich.prompt import Confirm
 import art
 import os
 import subprocess
 import sys
+import argparse
 import time
+import json
+
+parser = argparse.ArgumentParser(prog="python3 jarvis.py", description="An AI agent powered by OpenAI's o1-mini model.")
+parser.add_argument("-s", "--step-by-step", help="require confirmation before command execution", action="store_true", default=False)
+parser.add_argument("-t", "--token", help="API token used to authenticate with OpenAI", default="", type=str)
+
+args = parser.parse_args()
+step_by_step = args.step_by_step
+token = args.token
 
 try:
-    openai_token = os.environ["OPENAI_TOKEN"]
+    if token != "":
+        openai_token = token
+    else:
+        openai_token = os.environ["OPENAI_TOKEN"]
 except:
-    print("Error, missing OPENAI_TOKEN.")
+    print("Error: missing OPENAI_TOKEN environment variable or token flag.")
     sys.exit(1)
 
 console = Console()
@@ -53,10 +67,17 @@ def introAnimation():
 
 def getIntroduction():
     with console.status("[bold green]Booting Jarvis...", spinner="bouncingBar") as status:
-        chat_completion = client.chat.completions.create(
-            messages=messages,
-            model="o1-mini",
-        )
+        try:
+            chat_completion = client.chat.completions.create(
+                messages=messages,
+                model="o1-mini",
+            )
+        except Exception as e:
+            error_code = e.message.split(' - ')[0]
+            message_object = json.loads(e.message.split(' - ')[1].replace("'", '"').replace("None", "null"))
+            console.log(f"{error_code}\nReason: {message_object['error']['code']}\nMessage: {message_object['error']['message']}", style='bold red')
+            sys.exit(1)
+        
         response = chat_completion.choices[0].message.content # could do text to speech with response which would be cool https://platform.openai.com/docs/api-reference/audio/createSpeech
     
     messages.append({"role": "assistant", "content": response})
@@ -126,24 +147,33 @@ def main():
         while blocks["command"]:
             syntax = Syntax(blocks["command"], "bash")
             console.print(syntax)
-            if "sudo" in blocks["command"]:
-                choice = input("Are you sure you want to let Jarvis run a sudo command? (y/n): ")
-                if choice != "y":
-                    break
 
-            with console.status("[bold blue]Executing command...", spinner="boxBounce") as status:
-                command_result = subprocess.Popen(blocks["command"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True) # what happens if user needs to type something in? still type stuff in but looks weird with the spinner
-                command_result.wait()
-                stdout = command_result.stdout.read()
-                stderr = command_result.stderr.read()
-                code = command_result.returncode
-            result = f"[stdout]{stdout}[/stdout] [code]{code}[/code] [stderr]{stderr}[/stderr]"
+            if step_by_step:
+                command_confirmation = Confirm.ask("Execute command?")
+            else:
+                command_confirmation = True
 
-            displayCommandResults(stdout, stderr, code)
+            if command_confirmation:
+                if "sudo" in blocks["command"]:
+                    choice = input("Are you sure you want to let Jarvis run a sudo command? (y/n): ")
+                    if choice != "y":
+                        break
 
-            response = askQuestion(result)
-            blocks = getBlocks(response)
-            print(f"\n{jarvis_tag} {blocks['conversation']}") # change to allow Markdown from jarvis?
+                with console.status("[bold blue]Executing command...", spinner="boxBounce") as status:
+                    command_result = subprocess.Popen(blocks["command"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True) # what happens if user needs to type something in? still type stuff in but looks weird with the spinner
+                    command_result.wait()
+                    stdout = command_result.stdout.read()
+                    stderr = command_result.stderr.read()
+                    code = command_result.returncode
+                result = f"[stdout]{stdout}[/stdout] [code]{code}[/code] [stderr]{stderr}[/stderr]"
+
+                displayCommandResults(stdout, stderr, code)
+
+                response = askQuestion(result)
+                blocks = getBlocks(response)
+                print(f"\n{jarvis_tag} {blocks['conversation']}") # change to allow Markdown from jarvis?
+            else:
+                break
 
 if __name__ == "__main__":
     main()
