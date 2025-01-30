@@ -65,29 +65,13 @@ def introAnimation():
             clearScreen()
     art.lprint(length=len(text.split("\n")[0]), height=1, char="-")
 
-def getIntroduction():
-    with console.status("[bold green]Booting Jarvis...", spinner="bouncingBar") as status:
-        try:
-            chat_completion = client.chat.completions.create(
-                messages=messages,
-                model="o1-mini",
-            )
-        except Exception as e:
-            error_code = e.message.split(' - ')[0]
-            message_object = json.loads(e.message.split(' - ')[1].replace("'", '"').replace("None", "null"))
-            console.log(f"{error_code}\nReason: {message_object['error']['code']}\nMessage: {message_object['error']['message']}", style='bold red')
-            sys.exit(1)
-        
-        response = chat_completion.choices[0].message.content # could do text to speech with response which would be cool https://platform.openai.com/docs/api-reference/audio/createSpeech
-    
-    messages.append({"role": "assistant", "content": response})
-    return response
-
-def askQuestion(question):
+def askQuestion(question = None, introduction = False):
     global messages
-    messages.append({"role": "user", "content": question})
 
-    with console.status("[bold green]Thinking...") as status:
+    if not introduction:
+        messages.append({"role": "user", "content": question})
+
+    with console.status("[bold green]Thinking..." if not introduction else "[bold green]Booting Jarvis...", spinner="dots" if not introduction else "bouncingBar") as status:
         try:
             chat_completion = client.chat.completions.create(
                 messages=messages,
@@ -147,7 +131,7 @@ def main():
     jarvis_tag = "[bold green][i]jarvis[/i]>[/bold green]"
     user_tag = f"[bold yellow][i]{user.strip()}[/i]> [/bold yellow]"
 
-    introduction = getIntroduction()
+    introduction = askQuestion(introduction=True)
     blocks = getBlocks(introduction)
     print(f"{jarvis_tag} {blocks['conversation']}") # change to allow Markdown from jarvis?
 
@@ -157,7 +141,7 @@ def main():
         if request == "done" or request == "quit" or request == "exit" or request == "":
             break
 
-        response = askQuestion(request)
+        response = askQuestion(question=request)
         blocks = getBlocks(response)
         print(f"\n{jarvis_tag} {blocks['conversation']}")
 
@@ -178,7 +162,7 @@ def main():
 
                 result = runCommand(blocks["command"])
 
-                response = askQuestion(result)
+                response = askQuestion(question=result)
                 blocks = getBlocks(response)
                 print(f"\n{jarvis_tag} {blocks['conversation']}") # change to allow Markdown from jarvis?
             else:
