@@ -115,13 +115,6 @@ def getBlocks(response):
 
     return {"conversation": conversation, "command": command}
 
-def displayCommandResults(stdout, stderr, code):
-    print(f"[u]Status Code: [purple]{code}[/purple][/u]")
-    if stderr:
-        console.log(stderr.strip())
-    elif stdout:
-        print(f"[yellow3]{stdout.strip()}[/yellow3]")
-
 def main():
     introAnimation()
     initializeClient()
@@ -159,16 +152,22 @@ def main():
                     if not sudo_confirmation:
                         break
 
-                with console.status("[bold blue]Executing command...", spinner="boxBounce") as status:
-                    command_result = subprocess.Popen(blocks["command"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True) # what happens if user needs to type something in? still type stuff in but looks weird with the spinner
-                    command_result.wait()
-                    stdout = command_result.stdout.read()
-                    stderr = command_result.stderr.read()
-                    code = command_result.returncode
+                command_result = subprocess.Popen(blocks["command"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+
+                stdout = ""
+                for char in iter(lambda : command_result.stdout.read(1), ""):
+                    print(f"[yellow3]{char}[/yellow3]", end="", flush=True)
+                    stdout += char
+
+                command_result.wait()
+                stderr = command_result.stderr.read()
+                code = command_result.returncode
+
+                if stderr:
+                    console.log(stderr.strip())
+                print(f"Status Code: [purple]{code}[/purple]")
+
                 result = f"[stdout]{stdout}[/stdout] [code]{code}[/code] [stderr]{stderr}[/stderr]"
-
-                displayCommandResults(stdout, stderr, code)
-
                 response = askQuestion(result)
                 blocks = getBlocks(response)
                 print(f"\n{jarvis_tag} {blocks['conversation']}") # change to allow Markdown from jarvis?
