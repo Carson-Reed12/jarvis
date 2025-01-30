@@ -88,10 +88,16 @@ def askQuestion(question):
     messages.append({"role": "user", "content": question})
 
     with console.status("[bold green]Thinking...") as status:
-        chat_completion = client.chat.completions.create(
-            messages=messages,
-            model="o1-mini",
-        )
+        try:
+            chat_completion = client.chat.completions.create(
+                messages=messages,
+                model="o1-mini",
+            )
+        except Exception as e:
+            error_code = e.message.split(' - ')[0]
+            message_object = json.loads(e.message.split(' - ')[1].replace("'", '"').replace("None", "null"))
+            console.log(f"{error_code}\nReason: {message_object['error']['code']}\nMessage: {message_object['error']['message']}", style='bold red')
+            sys.exit(1)
         response = chat_completion.choices[0].message.content # could do text to speech with response which would be cool https://platform.openai.com/docs/api-reference/audio/createSpeech
     
     messages.append({"role": "assistant", "content": response})
