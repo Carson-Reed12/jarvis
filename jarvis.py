@@ -115,6 +115,24 @@ def getBlocks(response):
 
     return {"conversation": conversation, "command": command}
 
+def runCommand(command):
+    command_result = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+
+    stdout = ""
+    for char in iter(lambda : command_result.stdout.read(1), ""):
+        print(f"[yellow3]{char}[/yellow3]", end="", flush=True)
+        stdout += char
+
+    command_result.wait()
+    stderr = command_result.stderr.read()
+    code = command_result.returncode
+
+    if stderr:
+        console.log(stderr.strip())
+    print(f"Status Code: [purple]{code}[/purple]")
+
+    return f"[stdout]{stdout}[/stdout] [code]{code}[/code] [stderr]{stderr}[/stderr]"
+
 def main():
     introAnimation()
     initializeClient()
@@ -152,22 +170,8 @@ def main():
                     if not sudo_confirmation:
                         break
 
-                command_result = subprocess.Popen(blocks["command"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+                result = runCommand(blocks["command"])
 
-                stdout = ""
-                for char in iter(lambda : command_result.stdout.read(1), ""):
-                    print(f"[yellow3]{char}[/yellow3]", end="", flush=True)
-                    stdout += char
-
-                command_result.wait()
-                stderr = command_result.stderr.read()
-                code = command_result.returncode
-
-                if stderr:
-                    console.log(stderr.strip())
-                print(f"Status Code: [purple]{code}[/purple]")
-
-                result = f"[stdout]{stdout}[/stdout] [code]{code}[/code] [stderr]{stderr}[/stderr]"
                 response = askQuestion(result)
                 blocks = getBlocks(response)
                 print(f"\n{jarvis_tag} {blocks['conversation']}") # change to allow Markdown from jarvis?
