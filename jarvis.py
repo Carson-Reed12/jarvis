@@ -137,7 +137,7 @@ def main():
     while True:
         print(f"\n{user_tag}", end="")
         request = input()
-        if request == "done" or request == "quit" or request == "exit":
+        if request == "done" or request == "quit" or request == "exit" or request == "":
             break
 
         response = askQuestion(request)
@@ -155,8 +155,8 @@ def main():
 
             if command_confirmation:
                 if "sudo" in blocks["command"]:
-                    choice = input("Are you sure you want to let Jarvis run a sudo command? (y/n): ")
-                    if choice != "y":
+                    sudo_confirmation = Confirm.ask("Are you sure you want to let Jarvis run a sudo command?")
+                    if not sudo_confirmation:
                         break
 
                 with console.status("[bold blue]Executing command...", spinner="boxBounce") as status:
