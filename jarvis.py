@@ -57,7 +57,7 @@ def clearScreen():
 
 def introAnimation():
     for i in range(len("jarvis") + 1):
-        text = art.text2art(''.join(list("jarvis")[:i]), font="rnd-xlarge") # or rnd-medium
+        text = art.text2art(''.join(list("jarvis")[:i]), font="rnd-xlarge")
         print(f"[bold green]{text}")
         time.sleep(0.25)
 
@@ -82,8 +82,8 @@ def askQuestion(question = None, introduction = False):
             message_object = json.loads(e.message.split(' - ')[1].replace("'", '"').replace("None", "null"))
             console.log(f"{error_code}\nReason: {message_object['error']['code']}\nMessage: {message_object['error']['message']}", style='bold red')
             sys.exit(1)
-        response = chat_completion.choices[0].message.content # could do text to speech with response which would be cool https://platform.openai.com/docs/api-reference/audio/createSpeech
-    
+        response = chat_completion.choices[0].message.content 
+
     messages.append({"role": "assistant", "content": response})
     return response
 
