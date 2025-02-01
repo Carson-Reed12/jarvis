@@ -63,7 +63,11 @@ def introAnimation():
 
         if i != len("jarvis"):
             clearScreen()
-    art.lprint(length=len(text.split("\n")[0]), height=1, char="-")
+
+    for line in text.split("\n"):
+        if len(line) > 0:
+            art.lprint(length=len(line), height=1, char="-")
+            break
 
 def askQuestion(question = None, introduction = False):
     global messages
@@ -107,11 +111,15 @@ def getBlocks(response):
 
 def runCommand(command):
     command_result = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
-
     stdout = ""
+
+    terminal_width = os.get_terminal_size()[0]
+    art.lprint(length=terminal_width, height=1, char="-")
+    print("[u]Output[/u]")
     for char in iter(lambda : command_result.stdout.read(1), ""):
         print(f"[yellow3]{char}[/yellow3]", end="", flush=True)
         stdout += char
+    art.lprint(length=terminal_width, height=1, char="-")
 
     command_result.wait()
     stderr = command_result.stderr.read()
@@ -133,7 +141,7 @@ def main():
 
     introduction = askQuestion(introduction=True)
     blocks = getBlocks(introduction)
-    print(f"{jarvis_tag} {blocks['conversation']}") # change to allow Markdown from jarvis?
+    print(f"{jarvis_tag} {blocks['conversation']}")
 
     while True:
         print(f"\n{user_tag}", end="")
@@ -164,13 +172,9 @@ def main():
 
                 response = askQuestion(question=result)
                 blocks = getBlocks(response)
-                print(f"\n{jarvis_tag} {blocks['conversation']}") # change to allow Markdown from jarvis?
+                print(f"\n{jarvis_tag} {blocks['conversation']}")
             else:
                 break
 
 if __name__ == "__main__":
     main()
-    # for animations/styles:
-    # https://github.com/Textualize/rich
-    # https://github.com/sepandhaghighi/art
-    # https://github.com/Textualize/textual
