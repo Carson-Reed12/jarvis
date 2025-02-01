@@ -1,6 +1,7 @@
 from openai import OpenAI
 from rich import print
 from rich.console import Console
+from rich.markdown import Markdown
 from rich.syntax import Syntax
 from rich.prompt import Confirm
 import art
@@ -119,6 +120,8 @@ def runCommand(command):
     for char in iter(lambda : command_result.stdout.read(1), ""):
         print(f"[yellow3]{char}[/yellow3]", end="", flush=True)
         stdout += char
+    if stdout[-1] != "\n":
+        print("")
     art.lprint(length=terminal_width, height=1, char="-")
 
     command_result.wait()
@@ -132,26 +135,28 @@ def runCommand(command):
     return f"[stdout]{stdout}[/stdout] [code]{code}[/code] [stderr]{stderr}[/stderr]"
 
 def main():
-    introAnimation()
+    introAnimation() # https://rich.readthedocs.io/en/latest/layout.html can leave the top part there???
     initializeClient()
 
     user = subprocess.Popen("whoami", stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True).stdout.read()
-    jarvis_tag = "[bold green][i]jarvis[/i]>[/bold green]"
+    jarvis_tag = "[bold green][i]jarvis[/i]>[/bold green] "
     user_tag = f"[bold yellow][i]{user.strip()}[/i]> [/bold yellow]"
 
     introduction = askQuestion(introduction=True)
     blocks = getBlocks(introduction)
-    print(f"{jarvis_tag} {blocks['conversation']}")
+    print(jarvis_tag, Markdown(f"{blocks['conversation']}"), end="")
 
     while True:
-        print(f"\n{user_tag}", end="")
+        print(end="")
+        print(f"{user_tag}", end="")
         request = input()
         if request == "done" or request == "quit" or request == "exit" or request == "":
             break
 
         response = askQuestion(question=request)
         blocks = getBlocks(response)
-        print(f"\n{jarvis_tag} {blocks['conversation']}")
+        print(end="")
+        print(jarvis_tag, Markdown(f"{blocks['conversation']}"), end="")
 
         while blocks["command"]:
             syntax = Syntax(blocks["command"], "bash")
@@ -172,7 +177,8 @@ def main():
 
                 response = askQuestion(question=result)
                 blocks = getBlocks(response)
-                print(f"\n{jarvis_tag} {blocks['conversation']}")
+                print(end="")
+                print(jarvis_tag, Markdown(f"{blocks['conversation']}"), end="")
             else:
                 break
 
