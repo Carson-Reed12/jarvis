@@ -113,20 +113,23 @@ def getBlocks(response):
     return {"conversation": conversation, "command": command}
 
 def runCommand(command):
-    command_result = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
-    stdout = ""
+    with console.status("[bold blue]Executing command...[/bold blue]", spinner="boxBounce") as status:
+        command_result = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+        stdout = ""
 
-    print(Markdown("# Output", style="blue underline"), end="")
-    for char in iter(lambda : command_result.stdout.read(1), ""):
-        print(f"[yellow3]{char}[/yellow3]", end="", flush=True)
-        stdout += char
+        print(Markdown("# Output", style="blue underline"), end="")
+        for char in iter(lambda : command_result.stdout.read(1), ""):
+            status.stop()
+            print(f"[yellow3]{char}[/yellow3]", end="", flush=True)
+            stdout += char
+
     if stdout != "":
         if stdout[-1] != "\n":
             print("")
 
-    command_result.wait()
-    stderr = command_result.stderr.read()
-    code = command_result.returncode
+        command_result.wait()
+        stderr = command_result.stderr.read()
+        code = command_result.returncode
 
     if stderr:
         console.log(stderr.strip())
