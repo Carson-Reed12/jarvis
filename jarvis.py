@@ -1,8 +1,10 @@
 from openai import OpenAI
 from rich import print
 from rich.console import Console
+from rich.text import Text
 from rich.markdown import Markdown
 from rich.syntax import Syntax
+from rich.prompt import Prompt
 from rich.prompt import Confirm
 import art
 import os
@@ -114,15 +116,13 @@ def runCommand(command):
     command_result = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
     stdout = ""
 
-    terminal_width = os.get_terminal_size()[0]
-    art.lprint(length=terminal_width, height=1, char="-")
-    print("[u]Output[/u]")
+    print(Markdown("# Output", style="blue underline"), end="")
     for char in iter(lambda : command_result.stdout.read(1), ""):
         print(f"[yellow3]{char}[/yellow3]", end="", flush=True)
         stdout += char
-    if stdout[-1] != "\n":
-        print("")
-    art.lprint(length=terminal_width, height=1, char="-")
+    if stdout != "":
+        if stdout[-1] != "\n":
+            print("")
 
     command_result.wait()
     stderr = command_result.stderr.read()
@@ -130,33 +130,34 @@ def runCommand(command):
 
     if stderr:
         console.log(stderr.strip())
-    print(f"Status Code: [purple]{code}[/purple]")
+    print(Markdown(f"# Status Code: {code}", style="bold green" if code == 0 else "bold red"), end="")
 
     return f"[stdout]{stdout}[/stdout] [code]{code}[/code] [stderr]{stderr}[/stderr]"
 
 def main():
-    introAnimation() # https://rich.readthedocs.io/en/latest/layout.html can leave the top part there???
+    introAnimation()
     initializeClient()
 
     user = subprocess.Popen("whoami", stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True).stdout.read()
-    jarvis_tag = "[bold green][i]jarvis[/i]>[/bold green] "
-    user_tag = f"[bold yellow][i]{user.strip()}[/i]> [/bold yellow]"
+    jarvis_tag = "[bold green][i][u]jarvis[/i]>[/bold green][/u]"
+    user_tag = f"[bold yellow][i][u]{user.strip()}[/i]>[/bold yellow][/u]"
 
     introduction = askQuestion(introduction=True)
     blocks = getBlocks(introduction)
-    print(jarvis_tag, Markdown(f"{blocks['conversation']}"), end="")
+    print(jarvis_tag)
+    print(Markdown(f"{blocks['conversation']}"))
 
     while True:
-        print(end="")
-        print(f"{user_tag}", end="")
-        request = input()
+        # print(end="")
+        print(f"\n{user_tag}")
+        request = Prompt.ask(Text("$", style="rgb(59,120,255)"))
         if request == "done" or request == "quit" or request == "exit" or request == "":
             break
 
         response = askQuestion(question=request)
         blocks = getBlocks(response)
-        print(end="")
-        print(jarvis_tag, Markdown(f"{blocks['conversation']}"), end="")
+        print(f"\n{jarvis_tag}")
+        print(Markdown(f"{blocks['conversation']}"))
 
         while blocks["command"]:
             syntax = Syntax(blocks["command"], "bash")
@@ -177,8 +178,9 @@ def main():
 
                 response = askQuestion(question=result)
                 blocks = getBlocks(response)
-                print(end="")
-                print(jarvis_tag, Markdown(f"{blocks['conversation']}"), end="")
+                # print(end="")
+                print(f"\n{jarvis_tag}")
+                print(Markdown(f"{blocks['conversation']}"))
             else:
                 break
 
