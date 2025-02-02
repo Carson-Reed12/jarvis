@@ -151,7 +151,6 @@ def main():
     print(Markdown(f"{blocks['conversation']}"))
 
     while True:
-        # print(end="")
         print(f"\n{user_tag}")
         request = Prompt.ask(Text("$", style="rgb(59,120,255)"))
         if request == "done" or request == "quit" or request == "exit" or request == "":
@@ -181,7 +180,6 @@ def main():
 
                 response = askQuestion(question=result)
                 blocks = getBlocks(response)
-                # print(end="")
                 print(f"\n{jarvis_tag}")
                 print(Markdown(f"{blocks['conversation']}"))
             else:
