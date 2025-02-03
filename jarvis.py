@@ -17,10 +17,12 @@ import json
 parser = argparse.ArgumentParser(prog="python3 jarvis.py", description="An AI agent powered by OpenAI's o1-mini model.")
 parser.add_argument("-s", "--step-by-step", help="require confirmation before command execution", action="store_true", default=False)
 parser.add_argument("-t", "--token", help="API token used to authenticate with OpenAI", default="", type=str)
+parser.add_argument("-d", "--device", help="device being used (Raspberry Pi, Macbook, Windows desktop, etc.)", default="Raspberry Pi 4", type=str)
 
 args = parser.parse_args()
 step_by_step = args.step_by_step
 token = args.token
+device = args.device
 
 try:
     if token != "":
@@ -33,14 +35,14 @@ except:
 
 console = Console()
 
-def initializeClient():
+def initializeClient(device):
     global client
     global messages
 
     client = OpenAI(api_key=openai_token)
-    messages = [{"role": "user", "content": """You are an AI assistant intended 
-                to help the user by running commands on a Raspberry Pi 4. You take on the personality and name of 'Jarvis' from Iron Man.
-                If the user initiates a normal conversationi, simply respond like Jarvis would wth Iron Man. However, the user may request that you
+    messages = [{"role": "user", "content": f"""You are an AI assistant intended 
+                to help the user by running commands on a {device}. You take on the personality and name of 'Jarvis' from Iron Man.
+                If the user initiates a normal conversation, simply respond like Jarvis would wth Iron Man. However, the user may request that you
                 assist with something on their Raspberry Pi. Your response to these questions should be in two parts: a [conversation] block where you respond
                 conversationally, and a [command] block where you respond with the command necessary to complete the task. For example, if the user asked, 'Jarvis,
                 please start an Apache2 server for me', you might respond with: [conversation]Of course sir, launching the server now.[/conversation] [command]
@@ -98,14 +100,14 @@ def getBlocks(response):
     conversation = response.split("[conversation]")[1].split("[/conversation]")[0] if "[conversation]" in response else ""
     command = response.split("[command]")[1].split("[/command]")[0] if "[command]" in response else ""
 
-    if conversation[0:1] == "\n":
-        conversation = conversation[1:]
-    if conversation[-1:] == "\n":
-        conversation = conversation[:-1]
-    if command[0:1] == "\n":
-        command = command[1:]
-    if command[-1:] == "\n":
-        command = command[:-1]
+    if conversation:
+        if conversation[0] == "\n":
+            conversation = conversation[1:]
+        conversation = conversation.strip()
+    if command:
+        if command[0] == "\n":
+            command = command[1:]
+        command = command.strip()
 
     if command.startswith('echo -e'):
         command = command.replace('echo -e', 'echo')
@@ -120,6 +122,8 @@ def runCommand(command):
         print(Markdown("# Output", style="blue underline"), end="")
         for char in iter(lambda : command_result.stdout.read(1), ""):
             status.stop()
+            if char == "\\":
+                char = "\\\\"
             print(f"[yellow3]{char}[/yellow3]", end="", flush=True)
             stdout += char
 
@@ -127,9 +131,9 @@ def runCommand(command):
         if stdout[-1] != "\n":
             print("")
 
-        command_result.wait()
-        stderr = command_result.stderr.read()
-        code = command_result.returncode
+    command_result.wait()
+    stderr = command_result.stderr.read()
+    code = command_result.returncode
 
     if stderr:
         console.log(stderr.strip())
@@ -139,7 +143,7 @@ def runCommand(command):
 
 def main():
     introAnimation()
-    initializeClient()
+    initializeClient(device)
 
     user = subprocess.Popen("whoami", stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True).stdout.read()
     jarvis_tag = "[bold green][i][u]jarvis[/i]>[/bold green][/u]"
