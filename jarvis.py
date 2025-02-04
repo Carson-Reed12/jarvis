@@ -6,6 +6,7 @@ from rich.markdown import Markdown
 from rich.syntax import Syntax
 from rich.prompt import Prompt
 from rich.prompt import Confirm
+from playsound import playsound
 import art
 import os
 import subprocess
@@ -17,12 +18,14 @@ import json
 parser = argparse.ArgumentParser(prog="python3 jarvis.py", description="An AI agent powered by OpenAI's o1-mini model.")
 parser.add_argument("-s", "--step-by-step", help="require confirmation before command execution", action="store_true", default=False)
 parser.add_argument("-t", "--token", help="API token used to authenticate with OpenAI", default="", type=str)
-parser.add_argument("-d", "--device", help="device being used (Raspberry Pi, Macbook, Windows desktop, etc.)", default="Raspberry Pi 4", type=str)
+parser.add_argument("-d", "--device", help="device being used (Macbook, Windows desktop, etc. default: Raspberry Pi 4)", default="Raspberry Pi 4", type=str)
+parser.add_argument("-tts", "--text-to-speech", help="enable text to speech during response", action="store_true", default=False)
 
 args = parser.parse_args()
 step_by_step = args.step_by_step
 token = args.token
 device = args.device
+tts = args.text_to_speech
 
 try:
     if token != "":
@@ -141,18 +144,45 @@ def runCommand(command):
 
     return f"[stdout]{stdout}[/stdout] [code]{code}[/code] [stderr]{stderr}[/stderr]"
 
+def getResponse(conversation, introduction = False):
+    jarvis_tag = ("\n" if not introduction else "") + "[bold green][i][u]jarvis[/i]>[/bold green][/u]"
+    if not tts:
+        print(jarvis_tag)
+        print(Markdown(f"{conversation}"))
+    else:
+        playResponse(jarvis_tag, conversation)
+
+def playResponse(jarvis_tag, conversation):
+    with console.status("[bold green]Getting response...[/bold green]") as status:
+        try:
+            response = client.audio.speech.create(input=conversation, model='tts-1', voice='fable')
+        except Exception as e:
+            error_code = e.message.split(' - ')[0]
+            message_object = json.loads(e.message.split(' - ')[1].replace("'", '"').replace("None", "null"))
+            console.log(f"{error_code}\nReason: {message_object['error']['code']}\nMessage: {message_object['error']['message']}", style='bold red')
+            sys.exit(1)
+        with open('speech.mp3', 'wb') as file:
+            file.write(response.content)
+    try:
+        print(jarvis_tag)
+        print(Markdown(f"{conversation}"))
+        playsound('speech.mp3')
+    except Exception as e:
+        console.log(f"Error: {e}")
+        os.remove('speech.mp3')
+        sys.exit(1)
+    os.remove('speech.mp3')
+
 def main():
     introAnimation()
     initializeClient(device)
 
     user = subprocess.Popen("whoami", stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True).stdout.read()
-    jarvis_tag = "[bold green][i][u]jarvis[/i]>[/bold green][/u]"
     user_tag = f"[bold yellow][i][u]{user.strip()}[/i]>[/bold yellow][/u]"
 
     introduction = askQuestion(introduction=True)
     blocks = getBlocks(introduction)
-    print(jarvis_tag)
-    print(Markdown(f"{blocks['conversation']}"))
+    getResponse(blocks['conversation'], introduction=True)
 
     while True:
         print(f"\n{user_tag}")
@@ -162,8 +192,7 @@ def main():
 
         response = askQuestion(question=request)
         blocks = getBlocks(response)
-        print(f"\n{jarvis_tag}")
-        print(Markdown(f"{blocks['conversation']}"))
+        getResponse(blocks['conversation'])
 
         while blocks["command"]:
             syntax = Syntax(blocks["command"], "bash")
@@ -184,8 +213,7 @@ def main():
 
                 response = askQuestion(question=result)
                 blocks = getBlocks(response)
-                print(f"\n{jarvis_tag}")
-                print(Markdown(f"{blocks['conversation']}"))
+                getResponse(blocks['conversation'])
             else:
                 break
 
