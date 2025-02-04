@@ -4,9 +4,11 @@ from rich.console import Console
 from rich.text import Text
 from rich.markdown import Markdown
 from rich.syntax import Syntax
+from rich.progress import track
 from rich.prompt import Prompt
 from rich.prompt import Confirm
 from playsound import playsound
+from mutagen.mp3 import MP3
 import art
 import os
 import subprocess
@@ -166,7 +168,9 @@ def playResponse(jarvis_tag, conversation):
     try:
         print(jarvis_tag)
         print(Markdown(f"{conversation}"))
-        playsound('speech.mp3')
+        playsound('speech.mp3', False)
+        for i in track(range(int(MP3('speech.mp3').info.length)*10 + 3), description=""):
+            time.sleep(0.1)
     except Exception as e:
         console.log(f"Error: {e}")
         os.remove('speech.mp3')
