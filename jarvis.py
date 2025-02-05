@@ -17,7 +17,7 @@ import argparse
 import time
 import json
 
-parser = argparse.ArgumentParser(prog="python3 jarvis.py", description="An AI agent powered by OpenAI's o1-mini model.")
+parser = argparse.ArgumentParser(prog="python3 jarvis.py", description="An AI agent powered by OpenAI's o3-mini model.")
 parser.add_argument("-s", "--step-by-step", help="require confirmation before command execution", action="store_true", default=False)
 parser.add_argument("-t", "--token", help="API token used to authenticate with OpenAI", default="", type=str)
 parser.add_argument("-d", "--device", help="device being used (Macbook, Windows desktop, etc. default: Raspberry Pi 4)", default="Raspberry Pi 4", type=str)
@@ -29,16 +29,16 @@ token = args.token
 device = args.device
 tts = args.text_to_speech
 
+MODEL = "o1-mini"
+console = Console()
 try:
     if token != "":
         openai_token = token
     else:
         openai_token = os.environ["OPENAI_TOKEN"]
 except:
-    print("Error: missing OPENAI_TOKEN environment variable or token flag.")
+    console.log("Error: missing OPENAI_TOKEN environment variable or token flag.", style='bold red')
     sys.exit(1)
-
-console = Console()
 
 def initializeClient(device):
     global client
@@ -89,7 +89,7 @@ def askQuestion(question = None, introduction = False):
         try:
             chat_completion = client.chat.completions.create(
                 messages=messages,
-                model="o1-mini",
+                model=MODEL,
             )
         except Exception as e:
             error_code = e.message.split(' - ')[0]
